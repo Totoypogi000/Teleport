@@ -1,126 +1,209 @@
--- Services
+--// JakeMelissaScript Control Panel
+--// Owner: JakeMelissaScript
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- UI
-local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
-ScreenGui.Name = "TeleportGui"
-ScreenGui.ResetOnSpawn = false
+-- Auto Accept setup
+local acceptEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("AcceptPetGift")
+local AcceptedGifts = {}
+getgenv().AutoAccept = false
 
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 260, 0, 350)
-MainFrame.Position = UDim2.new(0, 50, 0.5, -175)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-MainFrame.AnchorPoint = Vector2.new(0, 0.5)
-
--- UICorner for rounded edges
-local corner = Instance.new("UICorner", MainFrame)
-corner.CornerRadius = UDim.new(0, 10)
-
--- OWNER Label
-local OwnerLabel = Instance.new("TextLabel", MainFrame)
-OwnerLabel.Size = UDim2.new(1, -20, 0, 35)
-OwnerLabel.Position = UDim2.new(0, 10, 0, 10)
-OwnerLabel.BackgroundTransparency = 1
-OwnerLabel.Text = "👑 OWNER: JAKE MELISSA"
-OwnerLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold color
-OwnerLabel.Font = Enum.Font.GothamBold
-OwnerLabel.TextSize = 18
-OwnerLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Layout
-local UIListLayout = Instance.new("UIListLayout", MainFrame)
-UIListLayout.Padding = UDim.new(0, 6)
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-OwnerLabel.LayoutOrder = 0
-
--- Padding
-local UIPadding = Instance.new("UIPadding", MainFrame)
-UIPadding.PaddingTop = UDim.new(0, 10)
-UIPadding.PaddingLeft = UDim.new(0, 10)
-UIPadding.PaddingRight = UDim.new(0, 10)
-
--- Button generator
-local function makeButton(text)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 32)
-    btn.Text = text
-    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    btn.TextColor3 = Color3.fromRGB(200, 200, 255)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 16
-    btn.BorderSizePixel = 0
-
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 6)
-
-    local stroke = Instance.new("UIStroke", btn)
-    stroke.Color = Color3.fromRGB(50, 100, 255)
-    stroke.Thickness = 1
-
-    btn.Parent = MainFrame
-    return btn
-end
-
--- Teleport function (face same direction)
-local function teleportToPlayer(targetPlayer)
-    local myChar = LocalPlayer.Character
-    local targetChar = targetPlayer.Character
-    if myChar and targetChar then
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-        if myHRP and targetHRP then
-            myHRP.CFrame = targetHRP.CFrame
-        end
-    end
-end
-
--- Create teleport buttons for players
-local function addTeleportButton(plr)
-    if plr ~= LocalPlayer then
-        local btn = makeButton("📍 Teleport to " .. plr.Name)
-        btn.MouseButton1Click:Connect(function()
-            teleportToPlayer(plr)
+-- Gift Listener (unchanged)
+for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
+    if remote:IsA("RemoteEvent") and string.lower(remote.Name):find("gift") then
+        remote.OnClientEvent:Connect(function(giftId, petInfo, sender)
+            if getgenv().AutoAccept and not AcceptedGifts[giftId] then
+                AcceptedGifts[giftId] = true
+                task.defer(function()
+                    acceptEvent:FireServer(true, giftId)
+                    warn("✅ Auto Accepted gift from:", sender, "(GiftID:", giftId, ")")
+                    -- remove gift UI
+                    local gui = LocalPlayer:WaitForChild("PlayerGui")
+                    for _, v in pairs(gui:GetDescendants()) do
+                        if (v:IsA("Frame") or v:IsA("TextLabel") or v:IsA("ImageLabel")) and tostring(v.Name):lower():find("gift") then
+                            v:Destroy()
+                        end
+                    end
+                end)
+            end
         end)
     end
 end
 
-for _, plr in ipairs(Players:GetPlayers()) do
-    addTeleportButton(plr)
-end
+--// GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "JakeMelissaScript"
+ScreenGui.Parent = game:GetService("CoreGui")
 
-Players.PlayerAdded:Connect(addTeleportButton)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 300)
+MainFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
--- Auto-accept trade (update remote path if needed)
-local function autoAcceptTrade()
-    local success, remote = pcall(function()
-        return ReplicatedStorage:FindFirstChild("Remotes"):FindFirstChild("AcceptTrade")
-    end)
-    if success and remote and remote:IsA("RemoteEvent") then
-        remote:FireServer()
-        print("✅ Auto accepted trade.")
+local UICornerMain = Instance.new("UICorner", MainFrame)
+UICornerMain.CornerRadius = UDim.new(0,10)
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -35, 0, 40)
+Title.Position = UDim2.new(0,5,0,0)
+Title.BackgroundTransparency = 1
+Title.Text = "👑 JakeMelissaScript"
+Title.TextColor3 = Color3.fromRGB(0,170,255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+-- Minimize Button
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0,30,0,30)
+MinBtn.Position = UDim2.new(1,-35,0,5)
+MinBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+MinBtn.TextColor3 = Color3.fromRGB(255,255,255)
+MinBtn.Text = "-"
+MinBtn.Font = Enum.Font.SourceSansBold
+MinBtn.TextSize = 20
+MinBtn.Parent = MainFrame
+local MinUICorner = Instance.new("UICorner", MinBtn)
+MinUICorner.CornerRadius = UDim.new(0,5)
+
+local Minimized = false
+MinBtn.MouseButton1Click:Connect(function()
+    Minimized = not Minimized
+    if Minimized then
+        for _, v in pairs(MainFrame:GetChildren()) do
+            if v ~= Title and v ~= MinBtn and not v:IsA("UICorner") then
+                v.Visible = false
+            end
+        end
+        MainFrame.Size = UDim2.new(0,250,0,45)
+        MinBtn.Text = "+"
     else
-        warn("⚠️ AcceptTrade remote not found.")
+        for _, v in pairs(MainFrame:GetChildren()) do
+            if v ~= Title and v ~= MinBtn and not v:IsA("UICorner") then
+                v.Visible = true
+            end
+        end
+        MainFrame.Size = UDim2.new(0,250,0,300)
+        MinBtn.Text = "-"
     end
-end
-
--- Leave button
-local leaveBtn = makeButton("❌ Leave Game")
-leaveBtn.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
-leaveBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-leaveBtn.MouseButton1Click:Connect(function()
-    game:Shutdown()
 end)
 
--- Periodic auto-accept trade
-task.spawn(function()
-    while true do
-        pcall(autoAcceptTrade)
-        task.wait(2)
+-- Auto Accept Toggle UI
+local SwitchLabel = Instance.new("TextLabel")
+SwitchLabel.Size = UDim2.new(0,150,0,30)
+SwitchLabel.Position = UDim2.new(0,10,0,50)
+SwitchLabel.BackgroundTransparency = 1
+SwitchLabel.Text = "Auto Accept Gift"
+SwitchLabel.TextColor3 = Color3.fromRGB(255,255,255)
+SwitchLabel.TextXAlignment = Enum.TextXAlignment.Left
+SwitchLabel.Font = Enum.Font.SourceSansBold
+SwitchLabel.TextSize = 14
+SwitchLabel.Parent = MainFrame
+
+local SwitchFrame = Instance.new("TextButton")
+SwitchFrame.Size = UDim2.new(0,50,0,25)
+SwitchFrame.Position = UDim2.new(0,160,0,52)
+SwitchFrame.BackgroundColor3 = Color3.fromRGB(80,80,80)
+SwitchFrame.BorderSizePixel = 0
+SwitchFrame.Text = ""
+SwitchFrame.Parent = MainFrame
+
+local Knob = Instance.new("Frame")
+Knob.Size = UDim2.new(0,23,0,23)
+Knob.Position = UDim2.new(0,1,0,1)
+Knob.BackgroundColor3 = Color3.fromRGB(200,50,50)
+Knob.BorderSizePixel = 0
+Knob.Parent = SwitchFrame
+
+local UICorner1 = Instance.new("UICorner", SwitchFrame)
+UICorner1.CornerRadius = UDim.new(0,12)
+local UICorner2 = Instance.new("UICorner", Knob)
+UICorner2.CornerRadius = UDim.new(0,12)
+
+-- Toggle function
+local function ToggleSwitch()
+    getgenv().AutoAccept = not getgenv().AutoAccept
+    if getgenv().AutoAccept then
+        Knob:TweenPosition(UDim2.new(0,26,0,1),"Out","Sine",0.2,true)
+        Knob.BackgroundColor3 = Color3.fromRGB(50,200,50)
+    else
+        Knob:TweenPosition(UDim2.new(0,1,0,1),"Out","Sine",0.2,true)
+        Knob.BackgroundColor3 = Color3.fromRGB(200,50,50)
     end
+end
+SwitchFrame.MouseButton1Click:Connect(ToggleSwitch)
+
+-- Player list & teleport
+local PlayerList = Instance.new("ScrollingFrame")
+PlayerList.Size = UDim2.new(1,-20,0,200)
+PlayerList.Position = UDim2.new(0,10,0,90)
+PlayerList.BackgroundTransparency = 1
+PlayerList.ScrollBarThickness = 4
+PlayerList.Parent = MainFrame
+
+local UIList = Instance.new("UIListLayout")
+UIList.Padding = UDim.new(0,4)
+UIList.Parent = PlayerList
+
+-- Fastest teleport function (direct)
+local function teleportToPlayer(target)
+    if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and
+       LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+    end
+end
+
+local function refreshPlayerList()
+    for _, btn in pairs(PlayerList:GetChildren()) do
+        if btn:IsA("TextButton") then btn:Destroy() end
+    end
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(1,-10,0,25)
+            Btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            Btn.TextColor3 = Color3.fromRGB(255,255,255)
+            Btn.Font = Enum.Font.SourceSans
+            Btn.TextSize = 14
+            Btn.Text = plr.DisplayName
+            Btn.Parent = PlayerList
+
+            local BtnCorner = Instance.new("UICorner", Btn)
+            BtnCorner.CornerRadius = UDim.new(0,6)
+
+            Btn.MouseButton1Click:Connect(function()
+                teleportToPlayer(plr)
+            end)
+        end
+    end
+    PlayerList.CanvasSize = UDim2.new(0,0,0,UIList.AbsoluteContentSize.Y + 10)
+end
+
+Players.PlayerAdded:Connect(refreshPlayerList)
+Players.PlayerRemoving:Connect(refreshPlayerList)
+refreshPlayerList()
+
+-- Discord button
+local DiscordButton = Instance.new("TextButton")
+DiscordButton.Size = UDim2.new(1,-20,0,25)
+DiscordButton.Position = UDim2.new(0,10,1,-35)
+DiscordButton.Text = "🔗 Discord: https://discord.gg/j5J9MDqY"
+DiscordButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+DiscordButton.TextColor3 = Color3.fromRGB(0,170,255)
+DiscordButton.Font = Enum.Font.SourceSansBold
+DiscordButton.TextSize = 12
+DiscordButton.Parent = MainFrame
+
+local DiscordCorner = Instance.new("UICorner", DiscordButton)
+DiscordCorner.CornerRadius = UDim.new(0,6)
+
+DiscordButton.MouseButton1Click:Connect(function()
+    setclipboard("https://discord.gg/j5J9MDqY")
 end)
